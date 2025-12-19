@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Weather App</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; background: #f0f2f5; }
+        .card { background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1 id="city">Загрузка...</h1>
+        <p id="temp"></p>
+        <p id="desc"></p>
+    </div>
+
+    <script>
+        async function getWeather() {
+            try {
+                const res = await fetch('/api/weather');
+                const data = await res.json();
+                document.getElementById('city').innerText = data.city;
+                document.getElementById('temp').innerText = data.temp + '°C';
+                document.getElementById('desc').innerText = data.description;
+            } catch (e) {
+                document.getElementById('city').innerText = 'Ошибка загрузки';
+            }
+        }
+        getWeather();
+    </script>
+</body>
+</html>
