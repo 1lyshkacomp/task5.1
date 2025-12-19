@@ -1,30 +1,37 @@
-
 export default async function handler(req, res) {
-    // 1. Получаем IP (Vercel прокидывает его в заголовках)
-    const ip = req.headers['x-forwarded-for'] || '8.8.8.8';
-    const GEO_API = `http://ip-api.com/json/${ip}`;
+    // Исправление: берем только первый IP из списка, если их несколько
+    const forwarded = req.headers['x-forwarded-for'];
+    const ip = forwarded ? forwarded.split(',')[0] : '8.8.8.8';
 
     try {
-        // 2. Геолокация
-        const geoRes = await fetch(GEO_API);
+        console.log("Checking weather for IP:", ip);
+
+        const geoRes = await fetch(`http://ip-api.com/json/${ip}`);
         const geoData = await geoRes.json();
         
-        const { lat, lon, city } = geoData;
+        if (geoData.status !== 'success') {
+            throw new Error(`Geo API failed: ${geoData.message}`);
+        }
 
-        // 3. Погода (OpenWeather)
+        const { lat, lon, city } = geoData;
         const KEY = process.env.OPENWEATHER_API_KEY;
-        const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${KEY}&units=metric&lang=ru`;
+
+        const weatherRes = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${KEY}&units=metric&lang=ru`);
         
-        const weatherRes = await fetch(weatherUrl);
+        if (!weatherRes.ok) {
+            throw new Error(`Weather API returned status ${weatherRes.status}`);
+        }
+
         const weatherData = await weatherRes.json();
 
-        // 4. Ответ
         res.status(200).json({
             city: city,
             temp: Math.round(weatherData.main.temp),
             description: weatherData.weather[0].description
         });
     } catch (error) {
-        res.status(500).json({ error: "Failed to fetch data" });
+        // Выводим реальную ошибку в логи Vercel
+        console.error("API Error Detail:", error.message);
+        res.status(500).json({ error: "Failed to fetch data", details: error.message });
     }
 }
